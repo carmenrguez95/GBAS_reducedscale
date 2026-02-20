@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GBAS Reduced Scale — Score Calculator</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --text:#e8ecff;
+      --muted:#b9c2ffcc;
+
+      --mild:#2ecc71;
+      --moderate:#f1c40f;
+      --severe:#e74c3c;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 600px at 20% -10%, #1c2a66 0%, transparent 60%),
+                  radial-gradient(1000px 700px at 110% 10%, #3a1a52 0%, transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    header{
+      max-width:1100px;
+      margin:28px auto 14px;
+      padding:0 16px;
+    }
+    h1{
+      margin:0 0 8px;
+      font-size: clamp(22px, 3vw, 34px);
+      letter-spacing: .2px;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      line-height:1.45;
+      max-width: 90ch;
+    }
+
+    main{
+      max-width:1100px;
+      margin: 14px auto 40px;
+      padding: 0 16px;
+      display:grid;
+      grid-template-columns: 1.35fr .65fr;
+      gap:16px;
+    }
+    @media (max-width: 980px){
+      main{grid-template-columns: 1fr}
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:18px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.25);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 16px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .card .hd h2{
+      margin:0;
+      font-size:16px;
+      letter-spacing:.2px;
+    }
+    .pill{
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid rgba(255,255,255,.12);
+      padding:6px 10px;
+      border-radius:999px;
+      white-space:nowrap;
+    }
+    .bd{padding:14px 16px}
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width: 760px){
+      .grid{grid-template-columns: 1fr}
+    }
+
+    .field{
+      padding:12px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      background: rgba(0,0,0,.12);
+    }
+    .field label{
+      display:block;
+      font-size:13px;
+      margin:0 0 6px;
+      font-weight:800;
+    }
+    .help{
+      margin:0 0 10px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+    select{
+      width:100%;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(10,15,35,.75);
+      color:var(--text);
+      outline:none;
+    }
+    select:focus{
+      border-color: rgba(110,170,255,.7);
+      box-shadow: 0 0 0 3px rgba(110,170,255,.15);
+    }
+    .pts{
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .pts b{color:var(--text); font-weight:900}
+
+    .summary{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .bigScore{
+      font-size:44px;
+      font-weight:900;
+      line-height:1;
+      margin:0;
+    }
+    .row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px 0;
+      border-bottom:1px dashed rgba(255,255,255,.14);
+      color:var(--muted);
+      font-size:13px;
+    }
+    .row:last-child{border-bottom:none}
+    .row b{color:var(--text)}
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:12px;
+      border:1px solid rgba(255,255,255,.18);
+      letter-spacing:.3px;
+    }
+    .badge.mild{background: rgba(46,204,113,.18); color: #bff6d6}
+    .badge.moderate{background: rgba(241,196,15,.18); color:#ffeaa1}
+    .badge.severe{background: rgba(231,76,60,.18); color:#ffc2bb}
+
+    .legend{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .legend .chip{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      color:var(--muted);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+    .dot.mild{background:var(--mild)}
+    .dot.moderate{background:var(--moderate)}
+    .dot.severe{background:var(--severe)}
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    button{
+      cursor:pointer;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(10,15,35,.8);
+      color:var(--text);
+      font-weight:900;
+    }
+    button:hover{filter:brightness(1.08)}
+
+    .warn{
+      margin-top:10px;
+      font-size:12px;
+      color:#ffd4c7;
+      background: rgba(231,76,60,.12);
+      border:1px solid rgba(231,76,60,.25);
+      padding:10px 12px;
+      border-radius:14px;
+      display:none;
+    }
+
+    .note{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GBAS Reduced Scale — Score Calculator</h1>
+    <p class="subtitle">
+      Select the appropriate option for each item (points are shown in parentheses).
+      The page sums the points and displays the classification:
+      <b>Mild</b> (0–4), <b>Moderate</b> (5–7), <b>Severe</b> (≥8).
+    </p>
+  </header>
+
+  <main>
+    <section class="card" aria-label="Score input form">
+      <div class="hd">
+        <h2>Enter item scores</h2>
+        <span class="pill">Auto-calculation</span>
+      </div>
+      <div class="bd">
+        <div id="formRoot"></div>
+        <div class="note">
+          Abbreviations:
+          <b>cBPW</b> = corrected biparietal width (mm),
+          <b>cDGMA</b> = corrected deep GM area (cm²).
+        </div>
+      </div>
+    </section>
+
+    <aside class="summary" aria-label="Summary">
+      <div class="card">
+        <div class="hd">
+          <h2>Total score</h2>
+          <span class="pill" id="missingPill">Completeness: —</span>
+        </div>
+        <div class="bd">
+          <p class="bigScore" id="totalScore">0</p>
+          <div class="row"><span>WM subtotal</span><b id="wmSub">0</b></div>
+          <div class="row"><span>GM/Cerebellum subtotal</span><b id="gmSub">0</b></div>
+          <div class="row"><span>GA (weeks) subtotal</span><b id="gaSub">0</b></div>
+
+          <div class="warn" id="warnBox">
+            Some fields are not selected yet. The total currently includes only the selected items.
+          </div>
+
+          <div class="actions">
+            <button id="resetBtn" type="button">Reset</button>
+            <button id="copyBtn" type="button">Copy summary</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <h2>Classification</h2>
+          <span class="pill">0–4 / 5–7 / ≥8</span>
+        </div>
+        <div class="bd">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+            <span class="badge mild" id="classBadge">MILD</span>
+            <span class="pill" id="probText">&lt;20% probability of poor neurological outcome</span>
+          </div>
+          <p style="margin:0; color:var(--muted); line-height:1.45; font-size:13px;" id="classDesc">
+            0–4 points → Mild.
+          </p>
+
+          <div class="legend">
+            <span class="chip"><span class="dot mild"></span> 0–4 = Mild</span>
+            <span class="chip"><span class="dot moderate"></span> 5–7 = Moderate</span>
+            <span class="chip"><span class="dot severe"></span> ≥8 = Severe</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    // Items and points from the GBAS Reduced Scale image
+    const SCALE = [
+      {
+        section: "WM SCORE",
+        hint: "White Matter.",
+        key: "wm",
+        items: [
+          {
+            id: "cystic_lesions",
+            label: "Cystic lesions",
+            help: "Select extent and laterality.",
+            options: [
+              { text: "None (0)", pts: 0 },
+              { text: "Focal unilateral (2)", pts: 2 },
+              { text: "Focal bilateral (4)", pts: 4 },
+              { text: "Extensive unilateral (6)", pts: 6 },
+              { text: "Extensive bilateral (8)", pts: 8 }
+            ]
+          },
+          {
+            id: "cc_thinning",
+            label: "Thinning of the corpus callosum",
+            help: "Partial or global according to thickness thresholds.",
+            options: [
+              { text: "None (0)", pts: 0 },
+              { text: "Partial: genu/body <1.3 mm or splenium <2.0 mm (1)", pts: 1 },
+              { text: "Global: genu/body <1.3 mm and splenium <2.0 mm (2)", pts: 2 }
+            ]
+          },
+          {
+            id: "cbpw_reduction",
+            label: "cBPW volume reduction",
+            help: "cBPW = corrected biparietal width (mm).",
+            options: [
+              { text: "cBPW ≥ 77 mm (0)", pts: 0 },
+              { text: "77 mm > cBPW ≥ 72 mm (1)", pts: 1 },
+              { text: "72 mm > cBPW ≥ 67 mm (2)", pts: 2 },
+              { text: "67 mm > cBPW (3)", pts: 3 }
+            ]
+          }
+        ]
+      },
+      {
+        section: "GM OR CEREBELLUM SCORE",
+        hint: "Deep GM and/or Cerebellum.",
+        key: "gm",
+        items: [
+          {
+            id: "cdgma_reduction",
+            label: "cDGMA volume reduction",
+            help: "cDGMA = corrected deep GM area (cm²).",
+            options: [
+              { text: "cDGMA ≥ 9.5 (0)", pts: 0 },
+              { text: "9.5 > cDGMA ≥ 8.5 (2)", pts: 2 },
+              { text: "8.5 > cDGMA ≥ 7.5 (4)", pts: 4 },
+              { text: "7.5 > cDGMA (6)", pts: 6 }
+            ]
+          },
+          {
+            id: "cerebellum_signal",
+            label: "Cerebellum signal abnormality",
+            help: "Select pattern and laterality.",
+            options: [
+              { text: "None (0)", pts: 0 },
+              { text: "Punctate unilateral (2)", pts: 2 },
+              { text: "Punctate bilateral (4)", pts: 4 },
+              { text: "Extensive unilateral (6)", pts: 6 },
+              { text: "Extensive bilateral (8)", pts: 8 }
+            ]
+          }
+        ]
+      },
+      {
+        section: "GA AT BIRTH (WEEKS)",
+        hint: "Gestational Age at birth.",
+        key: "ga",
+        items: [
+          {
+            id: "ga_birth",
+            label: "GA at birth (weeks)",
+            help: "Choose gestational age range.",
+            options: [
+              { text: "30–32 (0)", pts: 0 },
+              { text: "27–30 (2)", pts: 2 },
+              { text: "23–26 (3)", pts: 3 }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const el = (tag, attrs = {}, children = []) => {
+      const node = document.createElement(tag);
+      Object.entries(attrs).forEach(([k,v]) => {
+        if (k === "class") node.className = v;
+        else node.setAttribute(k, v);
+      });
+      (Array.isArray(children) ? children : [children]).forEach(ch => {
+        if (typeof ch === "string") node.appendChild(document.createTextNode(ch));
+        else if (ch) node.appendChild(ch);
+      });
+      return node;
+    };
+
+    function buildForm() {
+      const root = document.getElementById("formRoot");
+      root.innerHTML = "";
+
+      SCALE.forEach(group => {
+        const card = el("div", { class: "card", style:"margin-bottom:12px;" });
+
+        const hd = el("div", { class:"hd" }, [
+          el("h2", {}, group.section),
+          el("span", { class:"pill" }, group.hint)
+        ]);
+
+        const bd = el("div", { class:"bd" });
+        const grid = el("div", { class:"grid" });
+
+        group.items.forEach(item => {
+          const field = el("div", { class:"field" });
+
+          const label = el("label", { for: item.id }, item.label);
+          const help = el("p", { class:"help" }, item.help);
+
+          const select = el("select", { id: item.id, "data-group": group.key, "aria-label": item.label });
+          select.appendChild(el("option", { value:"" }, "— Select —"));
+          item.options.forEach(o => select.appendChild(el("option", { value: String(o.pts) }, o.text)));
+
+          const pts = el("div", { class:"pts" }, [
+            el("span", {}, "Selected points:"),
+            el("b", { id: item.id + "_pts" }, "—")
+          ]);
+
+          select.addEventListener("change", compute);
+
+          field.appendChild(label);
+          field.appendChild(help);
+          field.appendChild(select);
+          field.appendChild(pts);
+
+          grid.appendChild(field);
+        });
+
+        bd.appendChild(grid);
+        card.appendChild(hd);
+        card.appendChild(bd);
+
+        root.appendChild(card);
+      });
+    }
+
+    // GBAS classification thresholds:
+    // Mild: 0–4, Moderate: 5–7, Severe: ≥8
+    function classify(total) {
+      if (total <= 4) {
+        return {
+          key: "mild",
+          title: "MILD",
+          desc: "0–4 points → Mild.",
+          prob: "<20% probability of poor neurological outcome"
+        };
+      }
+      if (total <= 7) {
+        return {
+          key: "moderate",
+          title: "MODERATE",
+          desc: "5–7 points → Moderate.",
+          prob: "20–50% probability of poor neurological outcome"
+        };
+      }
+      return {
+        key: "severe",
+        title: "SEVERE",
+        desc: "≥8 points → Severe.",
+        prob: ">50% probability of poor neurological outcome"
+      };
+    }
+
+    function compute() {
+      let wm = 0, gm = 0, ga = 0;
+      let selectedCount = 0;
+      let totalFields = 0;
+
+      SCALE.forEach(group => {
+        group.items.forEach(item => {
+          totalFields += 1;
+          const sel = document.getElementById(item.id);
+          const ptsEl = document.getElementById(item.id + "_pts");
+          const val = sel.value;
+
+          if (val === "") {
+            ptsEl.textContent = "—";
+            return;
+          }
+          const pts = Number(val);
+          ptsEl.textContent = String(pts);
+          selectedCount += 1;
+
+          if (group.key === "wm") wm += pts;
+          else if (group.key === "gm") gm += pts;
+          else if (group.key === "ga") ga += pts;
+        });
+      });
+
+      const total = wm + gm + ga;
+
+      document.getElementById("wmSub").textContent = wm;
+      document.getElementById("gmSub").textContent = gm;
+      document.getElementById("gaSub").textContent = ga;
+      document.getElementById("totalScore").textContent = total;
+
+      const miss = totalFields - selectedCount;
+      document.getElementById("missingPill").textContent = `Completeness: ${selectedCount}/${totalFields}`;
+      document.getElementById("warnBox").style.display = miss > 0 ? "block" : "none";
+
+      const c = classify(total);
+      const badge = document.getElementById("classBadge");
+      badge.textContent = c.title;
+      badge.className = "badge " + c.key;
+
+      document.getElementById("classDesc").textContent = c.desc;
+      document.getElementById("probText").textContent = c.prob;
+    }
+
+    function resetAll() {
+      SCALE.forEach(group => group.items.forEach(item => {
+        document.getElementById(item.id).value = "";
+        document.getElementById(item.id + "_pts").textContent = "—";
+      }));
+      compute();
+    }
+
+    function copySummary() {
+      const total = document.getElementById("totalScore").textContent;
+      const wm = document.getElementById("wmSub").textContent;
+      const gm = document.getElementById("gmSub").textContent;
+      const ga = document.getElementById("gaSub").textContent;
+      const clas = document.getElementById("classBadge").textContent;
+      const prob = document.getElementById("probText").textContent;
+      const completeness = document.getElementById("missingPill").textContent;
+
+      const lines = [
+        "GBAS Reduced Scale — Summary",
+        `Total: ${total}`,
+        `WM: ${wm} | GM/Cerebellum: ${gm} | GA: ${ga}`,
+        `Classification: ${clas} (${prob})`,
+        completeness
+      ];
+
+      navigator.clipboard.writeText(lines.join("\n"))
+        .then(() => alert("Summary copied to clipboard."))
+        .catch(() => alert("Could not copy automatically. Please copy the text manually."));
+    }
+
+    // Init
+    buildForm();
+    document.getElementById("resetBtn").addEventListener("click", resetAll);
+    document.getElementById("copyBtn").addEventListener("click", copySummary);
+    compute();
+  </script>
+</body>
+</html>
